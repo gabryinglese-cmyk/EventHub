@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.eventhub.constant.AppConstants;
+import com.eventhub.domain.dto.CreateEventRequest;
 import com.eventhub.domain.dto.EventDto;
 import com.eventhub.domain.entity.Event;
 import com.eventhub.domain.entity.User;
@@ -31,14 +32,14 @@ public class EventService {
     private final EventMapper eventMapper;
 
     @Transactional
-    public EventDto createEvent(EventDto eventDto, UUID userId) {
+    public EventDto createEvent(CreateEventRequest request, UUID userId) {
         log.info("Creating event for user: {}", userId);
 
         User createdBy = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         AppConstants.USER_NOT_FOUND + userId));
 
-        Event event = eventMapper.toEntity(eventDto);
+        Event event = eventMapper.toEntity(request);
         event.setCreatedBy(createdBy);
 
         Event savedEvent = eventRepository.save(event);

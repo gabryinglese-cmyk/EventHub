@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.eventhub.domain.dto.ApiResponse;
+import com.eventhub.domain.dto.CreateUserRequest;
 import com.eventhub.domain.dto.UserDto;
 import com.eventhub.service.UserService;
 
@@ -31,10 +32,11 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<UserDto>> createUser(@Valid @RequestBody UserDto userDto) {
-        log.info("POST /users - Creating user with email: {}", userDto.email());
+    public ResponseEntity<ApiResponse<UserDto>> createUser(
+            @Valid @RequestBody CreateUserRequest request) {
+        log.info("POST /users - Creating user with email: {}", request.email());
 
-        UserDto createdUser = userService.createUser(userDto);
+        UserDto createdUser = userService.createUser(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

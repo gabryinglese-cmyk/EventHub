@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.eventhub.constant.AppConstants;
+import com.eventhub.domain.dto.CreateUserRequest;
 import com.eventhub.domain.dto.UserDto;
 import com.eventhub.domain.entity.User;
 import com.eventhub.domain.mapper.UserMapper;
@@ -28,15 +29,15 @@ public class UserService {
     private final UserMapper userMapper;
 
     @Transactional
-    public UserDto createUser(UserDto userDto) {
-        log.info("Creating user with email: {}", userDto.email());
+    public UserDto createUser(CreateUserRequest request) {
+        log.info("Creating user with email: {}", request.email());
 
-        if (userRepository.existsByEmail(userDto.email())) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new DuplicateResourceException(
-                    AppConstants.USER_ALREADY_EXISTS + userDto.email());
+                    AppConstants.USER_ALREADY_EXISTS + request.email());
         }
 
-        User user = userMapper.toEntity(userDto);
+        User user = userMapper.toEntity(request);
         User savedUser = userRepository.save(user);
 
         log.info("User created successfully with id: {}", savedUser.getId());

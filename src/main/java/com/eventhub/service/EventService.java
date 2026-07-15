@@ -1,22 +1,24 @@
 package com.eventhub.service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.eventhub.constant.AppConstants;
 import com.eventhub.domain.dto.CreateEventRequest;
 import com.eventhub.domain.dto.EventDto;
+import com.eventhub.domain.dto.PageResponse;
 import com.eventhub.domain.entity.Event;
 import com.eventhub.domain.entity.User;
 import com.eventhub.domain.mapper.EventMapper;
 import com.eventhub.exception.ResourceNotFoundException;
 import com.eventhub.repository.EventRepository;
 import com.eventhub.repository.UserRepository;
+import com.eventhub.specification.EventSpecification;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,37 +60,51 @@ public class EventService {
         return eventMapper.toDto(event);
     }
 
-    public List<EventDto> getAllEvents() {
-        log.info("Fetching all events");
-        return eventRepository.findAll().stream()
-                .map(eventMapper::toDto)
-                .collect(Collectors.toList());
+    public PageResponse<EventDto> getAllEvents(Pageable pageable) {
+        log.info("Fetching all events with pagination - page: {}, size: {}", pageable.getPageNumber(),
+                pageable.getPageSize());
+        Page<Event> page = eventRepository.findAll(pageable);
+        return PageResponse.fromPage(page.map(eventMapper::toDto));
     }
 
-    public List<EventDto> getUpcomingEvents(LocalDateTime startDateTime, LocalDateTime endDateTime) {
-        log.info("Fetching upcoming events between {} and {}", startDateTime, endDateTime);
-        return eventRepository.findUpcomingEvents(startDateTime, endDateTime).stream()
-                .map(eventMapper::toDto)
-                .collect(Collectors.toList());
+    public PageResponse<EventDto> getUpcomingEvents(LocalDateTime startDateTime, LocalDateTime endDateTime,
+            Pageable pageable) {
+        log.info("Fetching upcoming events between {} and {} with pagination", startDateTime, endDateTime);
+        Page<Event> page = eventRepository.findUpcomingEvents(startDateTime, endDateTime, pageable);
+        return PageResponse.fromPage(page.map(eventMapper::toDto));
     }
 
-    public List<EventDto> getEventsByUser(UUID userId) {
-        log.info("Fetching events created by user: {}", userId);
+    public PageResponse<EventDto> getEventsByUser(UUID userId, Pageable pageable) {
+        log.info("Fetching events created by user: {} with pagination", userId);
 
         userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         AppConstants.USER_NOT_FOUND + userId));
 
-        return eventRepository.findByCreatedByUserId(userId).stream()
-                .map(eventMapper::toDto)
-                .collect(Collectors.toList());
+        Page<Event> page = eventRepository.findByCreatedByUserId(userId, pageable);
+        return PageResponse.fromPage(page.map(eventMapper::toDto));
     }
 
-    public List<EventDto> searchEvents(String searchTerm) {
-        log.info("Searching events with term: {}", searchTerm);
-        return eventRepository.searchByTitle(searchTerm).stream()
-                .map(eventMapper::toDto)
-                .collect(Collectors.toList());
+    public PageResponse<EventDto> searchEvents(String searchTerm, Pageable pageable) {
+        log.info("Searching events with term: {} with pagination", searchTerm);
+        Page<Event> page = eventRepository.searchByTitle(searchTerm, pageable);
+        return PageResponse.fromPage(page.map(eventMapper::toDto));
+    }
+
+    public PageResponse<EventDto> filterEvents(
+            String title,
+            LocalDateTime startDateTime,
+            LocalDateTime endDateTime,
+            String location,
+            Integer minCapacity,
+            Pageable pageable) {
+        log.info("Filtering events with criteria and pagination");
+
+        Page<Event> page = eventRepository.findAll(
+                EventSpecification.filterEvents(title, startDateTime, endDateTime, location, minCapacity),
+                pageable);
+
+        return PageResponse.fromPage(page.map(eventMapper::toDto));
     }
 
     @Transactional

@@ -1,9 +1,11 @@
 package com.eventhub.controller;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.eventhub.domain.dto.ApiResponse;
 import com.eventhub.domain.dto.CreateEventRequest;
 import com.eventhub.domain.dto.EventDto;
+import com.eventhub.domain.dto.PageResponse;
 import com.eventhub.service.EventService;
 
 import jakarta.validation.Valid;
@@ -57,46 +60,81 @@ public class EventController {
         }
 
         @GetMapping
-        public ResponseEntity<ApiResponse<List<EventDto>>> getAllEvents() {
-                log.info("GET /events - Fetching all events");
+        public ResponseEntity<ApiResponse<PageResponse<EventDto>>> getAllEvents(
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size,
+                        @RequestParam(defaultValue = "createdAt") String sortBy,
+                        @RequestParam(defaultValue = "DESC") Sort.Direction direction) {
+                log.info("GET /events - Fetching all events with pagination");
 
-                List<EventDto> events = eventService.getAllEvents();
+                Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+                PageResponse<EventDto> events = eventService.getAllEvents(pageable);
 
                 return ResponseEntity
                                 .ok(ApiResponse.ok("Events retrieved successfully", events));
         }
 
         @GetMapping("/upcoming")
-        public ResponseEntity<ApiResponse<List<EventDto>>> getUpcomingEvents(
+        public ResponseEntity<ApiResponse<PageResponse<EventDto>>> getUpcomingEvents(
                         @RequestParam LocalDateTime startDateTime,
-                        @RequestParam LocalDateTime endDateTime) {
-                log.info("GET /events/upcoming - Fetching events between {} and {}",
-                                startDateTime, endDateTime);
+                        @RequestParam LocalDateTime endDateTime,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size) {
+                log.info("GET /events/upcoming - Fetching upcoming events");
 
-                List<EventDto> upcomingEvents = eventService.getUpcomingEvents(startDateTime, endDateTime);
+                Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "dateTime"));
+                PageResponse<EventDto> upcomingEvents = eventService.getUpcomingEvents(startDateTime, endDateTime,
+                                pageable);
 
                 return ResponseEntity
                                 .ok(ApiResponse.ok("Upcoming events retrieved successfully", upcomingEvents));
         }
 
         @GetMapping("/user/{userId}")
-        public ResponseEntity<ApiResponse<List<EventDto>>> getEventsByUser(@PathVariable UUID userId) {
+        public ResponseEntity<ApiResponse<PageResponse<EventDto>>> getEventsByUser(
+                        @PathVariable UUID userId,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size) {
                 log.info("GET /events/user/{} - Fetching events created by user", userId);
 
-                List<EventDto> events = eventService.getEventsByUser(userId);
+                Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+                PageResponse<EventDto> events = eventService.getEventsByUser(userId, pageable);
 
                 return ResponseEntity
                                 .ok(ApiResponse.ok("User events retrieved successfully", events));
         }
 
         @GetMapping("/search")
-        public ResponseEntity<ApiResponse<List<EventDto>>> searchEvents(@RequestParam String searchTerm) {
+        public ResponseEntity<ApiResponse<PageResponse<EventDto>>> searchEvents(
+                        @RequestParam String searchTerm,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size) {
                 log.info("GET /events/search - Searching events with term: {}", searchTerm);
 
-                List<EventDto> events = eventService.searchEvents(searchTerm);
+                Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+                PageResponse<EventDto> events = eventService.searchEvents(searchTerm, pageable);
 
                 return ResponseEntity
                                 .ok(ApiResponse.ok("Events search completed", events));
+        }
+
+        @GetMapping("/filter")
+        public ResponseEntity<ApiResponse<PageResponse<EventDto>>> filterEvents(
+                        @RequestParam(required = false) String title,
+                        @RequestParam(required = false) LocalDateTime startDateTime,
+                        @RequestParam(required = false) LocalDateTime endDateTime,
+                        @RequestParam(required = false) String location,
+                        @RequestParam(required = false) Integer minCapacity,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size) {
+                log.info("GET /events/filter - Filtering events with criteria");
+
+                Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+                PageResponse<EventDto> events = eventService.filterEvents(title, startDateTime, endDateTime, location,
+                                minCapacity, pageable);
+
+                return ResponseEntity
+                                .ok(ApiResponse.ok("Events filtered successfully", events));
         }
 
         @PutMapping("/{eventId}")

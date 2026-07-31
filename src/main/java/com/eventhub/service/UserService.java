@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public UserDto createUser(CreateUserRequest request) {
@@ -37,7 +39,12 @@ public class UserService {
                     AppConstants.USER_ALREADY_EXISTS + request.email());
         }
 
-        User user = userMapper.toEntity(request);
+        User user = new User();
+        user.setEmail(request.email());
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setFirstName(request.firstName());
+        user.setLastName(request.lastName());
+
         User savedUser = userRepository.save(user);
 
         log.info("User created successfully with id: {}", savedUser.getId());

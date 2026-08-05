@@ -14,10 +14,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.eventhub.domain.dto.ApiResponse;
+import com.eventhub.domain.dto.ApiResponseDto;
 import com.eventhub.domain.dto.BookingDto;
 import com.eventhub.service.BookingService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,83 +30,144 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/bookings")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Bookings", description = "Booking management operations")
 public class BookingController {
 
-    private final BookingService bookingService;
+        private final BookingService bookingService;
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<BookingDto>> createBooking(
-            @RequestParam UUID eventId,
-            @RequestParam UUID userId,
-            @RequestParam Integer numberOfTickets) {
-        log.info("POST /bookings - Creating booking for event: {}, user: {}, tickets: {}",
-                eventId, userId, numberOfTickets);
+        @Operation(summary = "Create a booking", description = "Creates a booking for an event and a user")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "201", description = "Booking created successfully"),
+                        @ApiResponse(responseCode = "400", description = "Invalid booking data"),
+                        @ApiResponse(responseCode = "404", description = "Event or user not found")
+        })
+        @PostMapping
+        public ResponseEntity<ApiResponseDto<BookingDto>> createBooking(
+                        @Parameter(description = "Event UUID", example = "550e8400-e29b-41d4-a716-446655440000") @RequestParam UUID eventId,
 
-        BookingDto createdBooking = bookingService.createBooking(eventId, userId, numberOfTickets);
+                        @Parameter(description = "User UUID", example = "550e8400-e29b-41d4-a716-446655440000") @RequestParam UUID userId,
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.ok("Booking created successfully", createdBooking));
-    }
+                        @Parameter(description = "Number of tickets", example = "2") @RequestParam Integer numberOfTickets) {
 
-    @GetMapping("/{bookingId}")
-    public ResponseEntity<ApiResponse<BookingDto>> getBookingById(@PathVariable UUID bookingId) {
-        log.info("GET /bookings/{} - Fetching booking", bookingId);
+                log.info("POST /bookings - Creating booking for event: {}, user: {}, tickets: {}",
+                                eventId, userId, numberOfTickets);
 
-        BookingDto booking = bookingService.getBookingById(bookingId);
+                BookingDto createdBooking = bookingService.createBooking(
+                                eventId,
+                                userId,
+                                numberOfTickets);
 
-        return ResponseEntity
-                .ok(ApiResponse.ok("Booking retrieved successfully", booking));
-    }
+                return ResponseEntity
+                                .status(HttpStatus.CREATED)
+                                .body(ApiResponseDto.ok(
+                                                "Booking created successfully",
+                                                createdBooking));
+        }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<ApiResponse<List<BookingDto>>> getBookingsByUser(@PathVariable UUID userId) {
-        log.info("GET /bookings/user/{} - Fetching bookings for user", userId);
+        @Operation(summary = "Get booking by id", description = "Returns a booking using its UUID")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Booking found"),
+                        @ApiResponse(responseCode = "404", description = "Booking not found")
+        })
+        @GetMapping("/{bookingId}")
+        public ResponseEntity<ApiResponseDto<BookingDto>> getBookingById(
+                        @Parameter(description = "Booking UUID") @PathVariable UUID bookingId) {
 
-        List<BookingDto> bookings = bookingService.getBookingsByUser(userId);
+                log.info("GET /bookings/{} - Fetching booking", bookingId);
 
-        return ResponseEntity
-                .ok(ApiResponse.ok("User bookings retrieved successfully", bookings));
-    }
+                BookingDto booking = bookingService.getBookingById(bookingId);
 
-    @GetMapping("/event/{eventId}")
-    public ResponseEntity<ApiResponse<List<BookingDto>>> getBookingsByEvent(@PathVariable UUID eventId) {
-        log.info("GET /bookings/event/{} - Fetching bookings for event", eventId);
+                return ResponseEntity
+                                .ok(ApiResponseDto.ok(
+                                                "Booking retrieved successfully",
+                                                booking));
+        }
 
-        List<BookingDto> bookings = bookingService.getBookingsByEvent(eventId);
+        @Operation(summary = "Get bookings by user", description = "Returns all bookings created by a user")
+        @ApiResponse(responseCode = "200", description = "User bookings retrieved successfully")
+        @GetMapping("/user/{userId}")
+        public ResponseEntity<ApiResponseDto<List<BookingDto>>> getBookingsByUser(
+                        @Parameter(description = "User UUID") @PathVariable UUID userId) {
 
-        return ResponseEntity
-                .ok(ApiResponse.ok("Event bookings retrieved successfully", bookings));
-    }
+                log.info("GET /bookings/user/{} - Fetching bookings for user", userId);
 
-    @PutMapping("/{bookingId}/confirm")
-    public ResponseEntity<ApiResponse<BookingDto>> confirmBooking(@PathVariable UUID bookingId) {
-        log.info("PUT /bookings/{}/confirm - Confirming booking", bookingId);
+                List<BookingDto> bookings = bookingService.getBookingsByUser(userId);
 
-        BookingDto confirmedBooking = bookingService.confirmBooking(bookingId);
+                return ResponseEntity
+                                .ok(ApiResponseDto.ok(
+                                                "User bookings retrieved successfully",
+                                                bookings));
+        }
 
-        return ResponseEntity
-                .ok(ApiResponse.ok("Booking confirmed successfully", confirmedBooking));
-    }
+        @Operation(summary = "Get bookings by event", description = "Returns all bookings associated with an event")
+        @ApiResponse(responseCode = "200", description = "Event bookings retrieved successfully")
+        @GetMapping("/event/{eventId}")
+        public ResponseEntity<ApiResponseDto<List<BookingDto>>> getBookingsByEvent(
+                        @Parameter(description = "Event UUID") @PathVariable UUID eventId) {
 
-    @PutMapping("/{bookingId}/cancel")
-    public ResponseEntity<ApiResponse<BookingDto>> cancelBooking(@PathVariable UUID bookingId) {
-        log.info("PUT /bookings/{}/cancel - Cancelling booking", bookingId);
+                log.info("GET /bookings/event/{} - Fetching bookings for event", eventId);
 
-        BookingDto cancelledBooking = bookingService.cancelBooking(bookingId);
+                List<BookingDto> bookings = bookingService.getBookingsByEvent(eventId);
 
-        return ResponseEntity
-                .ok(ApiResponse.ok("Booking cancelled successfully", cancelledBooking));
-    }
+                return ResponseEntity
+                                .ok(ApiResponseDto.ok(
+                                                "Event bookings retrieved successfully",
+                                                bookings));
+        }
 
-    @DeleteMapping("/{bookingId}")
-    public ResponseEntity<ApiResponse<Void>> deleteBooking(@PathVariable UUID bookingId) {
-        log.info("DELETE /bookings/{} - Deleting booking", bookingId);
+        @Operation(summary = "Confirm booking", description = "Confirms an existing booking")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Booking confirmed successfully"),
+                        @ApiResponse(responseCode = "404", description = "Booking not found")
+        })
+        @PutMapping("/{bookingId}/confirm")
+        public ResponseEntity<ApiResponseDto<BookingDto>> confirmBooking(
+                        @Parameter(description = "Booking UUID") @PathVariable UUID bookingId) {
 
-        bookingService.deleteBooking(bookingId);
+                log.info("PUT /bookings/{}/confirm - Confirming booking", bookingId);
 
-        return ResponseEntity
-                .noContent()
-                .build();
-    }
+                BookingDto confirmedBooking = bookingService.confirmBooking(bookingId);
+
+                return ResponseEntity
+                                .ok(ApiResponseDto.ok(
+                                                "Booking confirmed successfully",
+                                                confirmedBooking));
+        }
+
+        @Operation(summary = "Cancel booking", description = "Cancels an existing booking")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Booking cancelled successfully"),
+                        @ApiResponse(responseCode = "404", description = "Booking not found")
+        })
+        @PutMapping("/{bookingId}/cancel")
+        public ResponseEntity<ApiResponseDto<BookingDto>> cancelBooking(
+                        @Parameter(description = "Booking UUID") @PathVariable UUID bookingId) {
+
+                log.info("PUT /bookings/{}/cancel - Cancelling booking", bookingId);
+
+                BookingDto cancelledBooking = bookingService.cancelBooking(bookingId);
+
+                return ResponseEntity
+                                .ok(ApiResponseDto.ok(
+                                                "Booking cancelled successfully",
+                                                cancelledBooking));
+        }
+
+        @Operation(summary = "Delete booking", description = "Deletes a booking using UUID")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "204", description = "Booking deleted successfully"),
+                        @ApiResponse(responseCode = "404", description = "Booking not found")
+        })
+        @DeleteMapping("/{bookingId}")
+        public ResponseEntity<ApiResponseDto<Void>> deleteBooking(
+                        @Parameter(description = "Booking UUID") @PathVariable UUID bookingId) {
+
+                log.info("DELETE /bookings/{} - Deleting booking", bookingId);
+
+                bookingService.deleteBooking(bookingId);
+
+                return ResponseEntity
+                                .noContent()
+                                .build();
+        }
 }

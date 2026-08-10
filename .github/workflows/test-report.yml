@@ -1,0 +1,20 @@
+name: Test Report
+
+on:
+  workflow_run:
+    workflows:
+      - CI Pipeline
+    types:
+      - completed
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+
+    steps:
+      - name: Report test failure
+        run: |
+          echo "CI Pipeline failed."
+          echo "Check the workflow logs for details."
